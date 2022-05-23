@@ -1,81 +1,21 @@
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   namespace: devops
   labels:
-    app: wordpress
-  name: mysql
+    cattle.io/creator: norman
+    workload.user.cattle.io/workloadselector: deployment-devops-wordpress
+  name: wordpress
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: wordpress
-      tier: mysql
+      workload.user.cattle.io/workloadselector: deployment-devops-wordpress
   template:
     metadata:
       labels:
-        app: wordpress
-        tier: mysql
-    spec:
-      containers:
-      - env:
-        - name: MYSQL_ROOT_PASSWORD
-          valueFrom:
-            secretKeyRef:
-              key: mysql-password
-              name: mysql-secrets
-        image: mysql:5.6
-        imagePullPolicy: Always
-        name: mysql
-        ports:
-        - containerPort: 3306
-          name: mysql
-          protocol: TCP
-        volumeMounts:
-        - mountPath: /var/lib/mysql
-          name: mysql-storage
-      volumes:
-      - name: mysql-storage
-        persistentVolumeClaim:
-          claimName: mysql-storage
----
-apiVersion: v1
-kind: Service
-metadata:
-  namespace: devops
-  labels:
-    app: wordpress
-  name: mysql
-spec:
-  ports:
-  - name: mysql
-    port: 3306
-    protocol: TCP
-    targetPort: 3306
-  selector:
-    app: wordpress
-  type: ClusterIP
-status:
-  loadBalancer: {}
----
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  namespace: devops
-  labels:
-    app: wordpress
-  name: wordpress
-spec:
-  replicas: 2
-  selector:
-    matchLabels:
-      app: wordpress
-      tier: frontend
-  template:
-    metadata:
-      labels:
-        app: wordpress
-        tier: frontend
+        workload.user.cattle.io/workloadselector: deployment-devops-wordpress
     spec:
       imagePullSecrets:
       - name: pipeline-docker-registry
@@ -97,47 +37,8 @@ spec:
           protocol: TCP
         volumeMounts:
         - mountPath: /var/www/html
-          name: wordpress-storage
+          name: wordpress-volume
       volumes:
-      - name: wordpress-storage
+      - name: wordpress-volume
         persistentVolumeClaim:
-          claimName: wordpress-storage
----
-apiVersion: v1
-kind: Service
-metadata:
-  namespace: devops
-  labels:
-    app: wordpress
-  name: wordpress
-spec:
-  externalTrafficPolicy: Cluster
-  ports:
-  - name: http
-    port: 80
-    protocol: TCP
-    targetPort: 80
-  selector:
-    app: wordpress
-  type: NodePort
-status:
-  loadBalancer: {}
----
-apiVersion: extensions/v1beta1
-kind: Ingress
-metadata:
-  namespace: devops
-  labels:
-    app: wordpress
-  name: wordpress
-spec:
-  rules:
-  - host: wordpress.devops.35.247.193.95.xip.io
-    http:
-      paths:
-      - backend:
-          serviceName: wordpress
-          servicePort: 80
-        path: /
-status:
-  loadBalancer: {}
+          claimName: wordpress-volume
